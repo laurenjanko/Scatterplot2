@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment 3</title>
+    <script src="scores.js" charset="utf-8"></script>  
+    <script src="https://d3js.org/d3.v4.js"></script>
+</head>
+<body>
+
+<h3>CMPS-3360 Assignment 3</h3>
+<span>Lauren Janko and Chris Lewis</span>
+
+<br/>
+<hr/>
+<br/>
+<br/>
+<script type="module">
+
+    import {brushX} from "https://cdn.skypack.dev/d3-brush@3";
+    
+    const brush = brushX();
+    
+</script>
+
+<!-- Creates divs for the graphs to be built in -->
+<div id="D3Scatter1">
+    <h2>1. SATM and SATV Axes Scatterplot</h2>
+</div>
+
+<div id="D3Scatter2">
+    <h2>2. ACT and GPA Axes Scatterplot</h2>
+</div>
+
+
+<script>
+    var div = d3.select("body").append("D3Scatter1")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+    var margin = {top: 10, right: 30, bottom: 30, left: 60},
+            width = 300 - margin.left - margin.right,
+            height = 200 - margin.top - margin.bottom;
+    var originalAxis = true;
+
+    //Defines axes for question 1
+    var originalXAxis = d3.scaleLinear()
+        .domain([0, 900])
+        .range([0, width]);
+    var originalYAxis = d3.scaleLinear()
+        .domain([0, 900])
+        .range([height, 0]);
+    
+    //Defines axes for question 4
+    var newXAxis = d3.scaleLinear()
+        .domain([0, 36])
+        .range([0, width]);
+    var newYAxis = d3.scaleLinear()
+        .domain([0,4])
+        .range([height, 0]);
+
+    function createGraphSAT(divName,colorScheme){ 
+        var onCircle = false;
+
+        var svg = d3.select("#"+divName)
+            .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+
+        svg.append("g")
+            .call(d3.brush()
+                .extent([[0,0],[width,height]])
+                .on("start end",handleBrush)
+            )
+        function addBrush(){
+            d3.select("g.brush").call(brush.extent([[0,0],[width,height]]))
+        }
+        function removeBrush(){
+            d3.select("g.brush").call(brush.extent([0,0]))
+        }
+        function handleBrush() {
+            brushExtent = d3.event.selection;
+            update();
+        }
+        function update(){
+            svg
+                .selectAll("dot")
+                .data(scores)
+                .enter()
+                .append("circle")
+                    .attr("cx", function (d) { return originalXAxis(d.SATM); } )
+                    .attr("cy", function (d) { return originalYAxis(d.SATV); } )
+                    .attr("r", function (d) { return pointRadius(d.ACT); })
+                    
+                    .style("fill", function (d) {
+                        return isInBrushExtent(d) ? 'red': 'black';
+                    })
+                    .on("mousedown", function(d){
+                        //addBrush();
+                        //alert(event.currentTarget);
+                        onCircle=true;
+                        const x = d.pageX;
+                        const y = d.pageY;
+                        svg.selectAll("circle[selected=false]").style("fill","grey");
+                        d3.select(event.currentTarget).style("fill", "red");
+                        d3.select(event.currentTarget).attr("selected",true)
+                        div.transition()
+                            .duration(100)
+                            .style("opacity",1);
+                        /*d3.select(event.currentTarget).transition()
+                            .duration('100')
+                            .attr("r", 10);*/
+                        
+                        div.html("SATM Score: " + d3.format(".2f")(d.SATM) + " SATV Score: " + d3.format(".2f")(d.SATV) + " ACT Score: " + d3.format(".2f")(d.ACT) + " GPA: " + d3.format(".2f")(d.GPA))
+                            .style("left", (x) + "px")
+                            .style("top", (y) + "px");
+                        var otherSVG = d3.select("#D3Scatter2");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.GPA == d.GPA) && (n.ACT == d.ACT);
+                            })
+                            .attr("r",10);
+
+
+                    })
+        }
+        function isInBrushExtent(d){
+            const xPos = originalXAxis(d.SATM);
+            const yPos = originalYAxis(d.SATV);
+            trueLoc = brushExtent &&
+                xPos >= brushExtent[0][0] &&
+                xPos <= brushExtent[1][0] &&
+                yPos >= brushExtent[0][1] &&
+                yPos <= brushExtent[1][1];
+                if (trueLoc){
+                var otherSVG = d3.select("#D3Scatter2");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.GPA == d.GPA) && (n.ACT == d.ACT);
+                            })
+                            .attr("r",10);
+                }
+                else{
+                    var otherSVG = d3.select("#D3Scatter2");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.GPA == d.GPA) && (n.ACT == d.ACT);
+                            })
+                            .attr("r",pointRadius(d.ACT));
+            }
+            return trueLoc
+        }
+
+
+        svg.append("g")
+            .attr("class", "xAxis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(originalXAxis));
+        
+        svg.append("g")
+            .attr("class", "yAxis")
+            .call(d3.axisLeft(originalYAxis));
+
+        svg.append("text")
+            .attr("class", "x label")
+            .attr("text-anchor", "end")
+            .attr("x", width)
+            .attr("y", height - 6)
+            .text("SATM Scores");
+
+        svg.append("text")
+            .attr("class", "y label")
+            .attr("text-anchor", "end")
+            .attr("y", 6)
+            .attr("dy", ".75em")
+            .attr("transform", "rotate(-90)")
+            .text("SATV Scores");
+
+        var pointRadius = d3.scaleLinear()
+            .domain([1,36])
+            .range([0,2])
+        var circle = svg.append("g")
+            .selectAll("dot")
+            .data(scores)
+            .enter()
+            .append("circle")
+                .attr("cx", function (d) { return originalXAxis(d.SATM); } )
+                .attr("cy", function (d) { return originalYAxis(d.SATV); } )
+                .attr("r", function (d) { return pointRadius(d.ACT); })
+                .attr("selected",false)
+                
+                .style("fill", function (d) { return colorScheme(d.GPA); })
+            .on("mousedown", function(d){
+                //alert(event.currentTarget);
+                onCircle=true;
+                const x = d.pageX;
+                const y = d.pageY;
+                svg.selectAll("circle[selected=false]").style("fill","grey");
+                d3.select(event.currentTarget).style("fill", "red");
+                d3.select(event.currentTarget).attr("selected",true)
+                div.transition()
+                    .duration(100)
+                    .style("opacity",1);
+                /*d3.select(event.currentTarget).transition()
+                    .duration('100')
+                    .attr("r", 10);*/
+                
+                div.html("SATM Score: " + d3.format(".2f")(d.SATM) + " SATV Score: " + d3.format(".2f")(d.SATV) + " ACT Score: " + d3.format(".2f")(d.ACT) + " GPA: " + d3.format(".2f")(d.GPA))
+                    .style("left", (x) + "px")
+                    .style("top", (y) + "px");
+                var otherSVG = d3.select("#D3Scatter2");
+                otherSVG
+                    .selectAll("circle")
+                    .filter( (n) => {
+                        return (n.GPA == d.GPA) && (n.ACT == d.ACT);
+                    })
+                    .attr("r",10);
+
+
+            })
+        document.getElementById(divName).addEventListener('click',function(e){
+            e = e || window.event;
+            var target = e.target || e.srcElement,
+                text = target.textContent || target.innerText;
+            if (target.children.length==1){
+                var otherSVG = d3.select("#D3Scatter2");
+                svg.selectAll("circle").style("fill", "black");
+                svg.selectAll("circle").attr("r", function(d) { return pointRadius(d.ACT)})
+                svg.selectAll("circle").attr("selected",false);
+                otherSVG
+                    .selectAll("circle")
+                    .attr("r", function (d) { return pointRadius(d.ACT); })
+                div.html("")
+            }
+        },false);
+            
+            
+        return svg
+    }
+
+    function createGraphACT(divName,colorScheme){
+        var svg = d3.select("#"+divName)
+            .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+        
+        svg.append("g")
+            .call(d3.brush()
+                .extent([[0,0],[width,height]])
+                .on("start end",handleBrush)
+            )
+        function addBrush(){
+            d3.select("g.brush").call(brush.extent([[0,0],[width,height]]))
+        }
+        function removeBrush(){
+            d3.select("g.brush").call(brush.extent([0,0]))
+        }
+        function handleBrush() {
+            brushExtent = d3.event.selection;
+            update();
+        }
+        function update(){
+            svg
+                .selectAll("dot")
+                .data(scores)
+                .enter()
+                .append("circle")
+                    .attr("cx", function (d) { return newXAxis(d.ACT); } )
+                    .attr("cy", function (d) { return newYAxis(d.GPA); } )
+                    .attr("r", function (d) { return pointRadius(d.ACT); })
+                    
+                    .style("fill", function (d) {
+                        return isInBrushExtent(d) ? 'red': 'black';
+                    })
+                    .on("mousedown", function(d){
+                        //addBrush();
+                        //alert(event.currentTarget);
+                        onCircle=true;
+                        const x = d.pageX;
+                        const y = d.pageY;
+                        svg.selectAll("circle[selected=false]").style("fill","grey");
+                        d3.select(event.currentTarget).style("fill", "red");
+                        d3.select(event.currentTarget).attr("selected",true)
+                        div.transition()
+                            .duration(100)
+                            .style("opacity",1);
+                        /*d3.select(event.currentTarget).transition()
+                            .duration('100')
+                            .attr("r", 10);*/
+                        
+                        div.html("SATM Score: " + d3.format(".2f")(d.SATM) + " SATV Score: " + d3.format(".2f")(d.SATV) + " ACT Score: " + d3.format(".2f")(d.ACT) + " GPA: " + d3.format(".2f")(d.GPA))
+                            .style("left", (x) + "px")
+                            .style("top", (y) + "px");
+                        var otherSVG = d3.select("#D3Scatter1");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.SATV == d.SATV) && (n.SATM == d.SATM);
+                            })
+                            .attr("r",10);
+
+
+                    })
+        }
+        function isInBrushExtent(d){
+            const xPos = newXAxis(d.ACT);
+            const yPos = newYAxis(d.GPA);
+            trueLoc =  brushExtent &&
+                xPos >= brushExtent[0][0] &&
+                xPos <= brushExtent[1][0] &&
+                yPos >= brushExtent[0][1] &&
+                yPos <= brushExtent[1][1];
+            if (trueLoc){
+                var otherSVG = d3.select("#D3Scatter1");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.SATM == d.SATM) && (n.SATV == d.SATV);
+                            })
+                            .attr("r",10);
+            }
+            else{
+                var otherSVG = d3.select("#D3Scatter1");
+                        otherSVG
+                            .selectAll("circle")
+                            .filter( (n) => {
+                                return (n.SATM == d.SATM) && (n.SATV == d.SATV);
+                            })
+                            .attr("r",pointRadius(d.ACT));
+            }
+            return trueLoc
+        }
+        svg.append("g")
+            .attr("class", "xAxis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(newXAxis));
+        
+        svg.append("g")
+        .attr("class", "yAxis")
+            .call(d3.axisLeft(newYAxis));
+
+        svg.append("text")
+            .attr("class", "x label")
+            .attr("text-anchor", "end")
+            .attr("x", width)
+            .attr("y", height - 6)
+            .text("ACT Scores");
+
+        svg.append("text")
+            .attr("class", "y label")
+            .attr("text-anchor", "end")
+            .attr("y", 6)
+            .attr("dy", ".75em")
+            .attr("transform", "rotate(-90)")
+            .text("GPA Scores");
+
+        var pointRadius = d3.scaleLinear()
+            .domain([1,36])
+            .range([0,2])
+        
+        svg.selectAll("dot")
+            .data(scores)
+            .enter()
+            .append("circle")
+                .attr("cx", function (d) { return newXAxis(d.ACT); } )
+                .attr("cy", function (d) { return newYAxis(d.GPA); } )
+                .attr("r", function (d) { return pointRadius(d.ACT); })
+                .style("fill", function (d) { return colorScheme(d.GPA); })
+            .on("mousedown", function(d){
+                svg.selectAll("circle").style("fill", "grey")
+                d3.select(event.currentTarget).style("fill", "red");
+                div.transition()
+                    .duration(100)
+                    .style("opacity",1);
+                div.html("SATM Score: " + d3.format(".2f")(d.SATM) + " SATV Score: " + d3.format(".2f")(d.SATV) + " ACT Score: " + d3.format(".2f")(d.ACT) + " GPA: " + d3.format(".2f")(d.GPA))
+                    .style("left", (x) + "px")
+                    .style("top", (y) + "px");
+                div.transition()
+                    .duration(100)
+                    .style("opacity",1);
+            
+                var otherSVG = d3.select("#D3Scatter1");
+                    otherSVG
+                    .selectAll("circle")
+                    .filter( (n) => {
+                        return (n.SATV == d.SATV) && (n.SATM == d.SATM);
+                    })
+                    .attr("r",10);
+            })
+            .on("mouseout", function(d){
+                d3.selectAll("circle").style("fill", "black");
+            });
+            document.getElementById(divName).addEventListener('click',function(e){
+            e = e || window.event;
+            var target = e.target || e.srcElement,
+                text = target.textContent || target.innerText;
+            if (target.children.length==1){
+                var otherSVG = d3.select("#D3Scatter1");
+                svg.selectAll("circle").style("fill", "black");
+                svg.selectAll("circle").attr("r", function(d) { return pointRadius(d.ACT)})
+                svg.selectAll("circle").attr("selected",false);
+                otherSVG
+                    .selectAll("circle")
+                    .attr("r", function (d) { return pointRadius(d.ACT); })
+                div.html("")
+            }
+        },false);
+
+        
+        return svg
+    }
+
+    function updateColor(graphObj,colorScheme){
+        if (!originalAxis){
+            updateAxis(graphObj,originalXAxis,originalYAxis);
+            originalAxis = true;
+        }
+        graphObj
+            .selectAll("circle")
+                .transition()
+                .duration(1000)
+                .style("fill", function (d) { return colorScheme(d.GPA); })
+    }
+
+    function updateAxis(graphObj){
+
+        if (originalAxis){
+            graphObj
+                .selectAll("g.xAxis")
+                    .transition()
+                    .duration(1000)
+                    .call(d3.axisBottom(newXAxis))
+        
+            graphObj
+                .selectAll("g.yAxis")
+                    .transition()
+                    .duration(1000)
+                    .call(d3.axisLeft(newYAxis))
+            graphObj
+                .selectAll("circle")
+                    .transition()
+                    .duration(1000)
+                    .attr("cx", function (d) { return newXAxis(d.SATM+d.SATV); } )
+                    .attr("cy", function (d) { return newYAxis(d.GPA); } )
+            originalAxis = false;
+            return;
+        }
+        graphObj
+            .selectAll("g.xAxis")
+                .transition()
+                .duration(1000)
+                .call(d3.axisBottom(originalXAxis))
+        
+        graphObj
+            .selectAll("g.yAxis")
+                .transition()
+                .duration(1000)
+                .call(d3.axisLeft(originalYAxis))
+        
+        graphObj
+            .selectAll("circle")
+                .transition()
+                .duration(1000)
+                .attr("cx", function (d) { return originalXAxis(d.SATM); } )
+                .attr("cy", function (d) { return originalYAxis(d.SATV); } )
+            
+        originalAxis = true;
+    }
+
+    var firstPos = 1.7;
+    var lastPos = 4.0;
+    var middlePos = (firstPos + lastPos) / 2;
+    var linearColor =  d3.scaleLinear()
+        .domain([firstPos,lastPos])
+        .range(["red","green"]);
+    var schemeLinearColor = d3.scaleLinear()
+        .domain([firstPos,middlePos,lastPos])
+        .range(["#a50f15","#ffffcc","#006d2c"])
+    var quantizeScales = d3.scaleQuantize()
+        .domain([firstPos,lastPos])
+        .range(["#ffffcc","#c2e699","#78c679","#31a354","#006837"])
+    var blackColor = d3.scaleLinear()
+        .domain([firstPos, lastPos])
+        .range(["black", "black"])
+    var graph1 = createGraphSAT("D3Scatter1", blackColor)
+    var graph2 = createGraphACT("D3Scatter2", blackColor)
+</script>
+
+
+
+</body>
+</html>
